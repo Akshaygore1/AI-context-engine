@@ -8,6 +8,7 @@ export interface UserProfile {
   preferredLanguage: string;
   preferredTone: string;
   subscription: string;
+  birthDetails: { date: string; time: string; place: string };
 }
 
 export interface Kundli {
@@ -15,6 +16,8 @@ export interface Kundli {
   moonSign: string;
   currentDasha: string;
   houses: Record<string, string>;
+  ascendant: string;
+  planets: Record<string, string>;
 }
 
 export interface Horoscope {

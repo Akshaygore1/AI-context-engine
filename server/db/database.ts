@@ -23,10 +23,12 @@ export function seedDatabase() {
 
   insert("users", "id", "user_101", {
     id: "user_101", name: "Aarav", preferredLanguage: "English", preferredTone: "supportive", subscription: "free",
+    birthDetails: { date: "1992-05-14", time: "08:30", place: "Mumbai, India" },
   });
   insert("kundli", "user_id", "user_101", {
     userId: "user_101", moonSign: "Taurus", currentDasha: "Jupiter Mahadasha encourages patient expansion and learning.",
     houses: { "6": "Steady routines support wellbeing.", "7": "Partnerships benefit from patient communication.", "10": "Saturn in the 10th house favors disciplined, durable career progress." },
+    ascendant: "Virgo", planets: { sun: "Taurus", moon: "Taurus", saturn: "Capricorn", jupiter: "Virgo" },
   });
   insert("horoscope", "user_id", "user_101", {
     userId: "user_101", career: "A period for consolidating skills, seeking mentorship, and taking measured leadership opportunities.",

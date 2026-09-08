@@ -4,8 +4,8 @@ import type { GatheredContext, Horoscope, Kundli, Panchang, SourceName, Upstream
 import { SuccessCache } from "./cache.js";
 
 const cache = new SuccessCache(config.cacheMaxEntries);
-const profileSchema = z.object({ id: z.string(), name: z.string(), preferredLanguage: z.string(), preferredTone: z.string(), subscription: z.string() });
-const kundliSchema = z.object({ userId: z.string(), moonSign: z.string(), currentDasha: z.string(), houses: z.record(z.string(), z.string()) });
+const profileSchema = z.object({ id: z.string(), name: z.string(), preferredLanguage: z.string(), preferredTone: z.string(), subscription: z.string(), birthDetails: z.object({ date: z.string(), time: z.string(), place: z.string() }) });
+const kundliSchema = z.object({ userId: z.string(), moonSign: z.string(), currentDasha: z.string(), houses: z.record(z.string(), z.string()), ascendant: z.string(), planets: z.record(z.string(), z.string()) });
 const horoscopeSchema = z.object({ userId: z.string(), career: z.string(), relationship: z.string(), health: z.string(), finance: z.string() });
 const panchangSchema = z.object({ tithi: z.string(), nakshatra: z.string(), yoga: z.string(), guidance: z.string() });
 
@@ -31,7 +31,10 @@ async function resilientRead<T>(source: SourceName, key: string, url: string, sc
         lastReason = response.status === 404 ? "Resource was not found." : `Upstream returned ${response.status}.`;
         if (!shouldRetry(response.status)) break;
       } else {
-        const parsed = schema.safeParse(await response.json());
+        let payload: unknown;
+        try { payload = JSON.parse(await response.text()); }
+        catch { lastReason = "Upstream returned malformed JSON."; break; }
+        const parsed = schema.safeParse(payload);
         if (!parsed.success) { lastReason = "Upstream returned an invalid payload."; break; }
         cache.set(key, parsed.data, config.cacheTtlMs);
         const outcome = { available: true, attempts, latencyMs: Math.round(performance.now() - started), cache: "miss" as const };
@@ -48,14 +51,20 @@ async function resilientRead<T>(source: SourceName, key: string, url: string, sc
   return { outcome };
 }
 
-const endpoint = (source: SourceName, fallbackPath: string) => config.serviceUrls[source] || `${config.upstreamBaseUrl}${fallbackPath}`;
+const endpoint = (source: SourceName, fallbackPath: string, encodedUser?: string) => {
+  const override = config.serviceUrls[source];
+  if (!override) return `${config.upstreamBaseUrl}${fallbackPath}`;
+  if (encodedUser && override.includes("{userId}")) return override.replaceAll("{userId}", encodedUser);
+  if (encodedUser && override.endsWith("/")) return `${override}${encodedUser}`;
+  return override;
+};
 
 export async function gatherContext(userId: string, requestId: string): Promise<GatheredContext> {
   const encodedUser = encodeURIComponent(userId);
   const [profile, kundli, horoscope, panchang] = await Promise.all([
-    resilientRead("profile", `profile:${userId}`, endpoint("profile", `/users/${encodedUser}`), profileSchema, requestId),
-    resilientRead("kundli", `kundli:${userId}`, endpoint("kundli", `/kundli/${encodedUser}`), kundliSchema, requestId),
-    resilientRead("horoscope", `horoscope:${userId}`, endpoint("horoscope", `/horoscope/${encodedUser}`), horoscopeSchema, requestId),
+    resilientRead("profile", `profile:${userId}`, endpoint("profile", `/users/${encodedUser}`, encodedUser), profileSchema, requestId),
+    resilientRead("kundli", `kundli:${userId}`, endpoint("kundli", `/kundli/${encodedUser}`, encodedUser), kundliSchema, requestId),
+    resilientRead("horoscope", `horoscope:${userId}`, endpoint("horoscope", `/horoscope/${encodedUser}`, encodedUser), horoscopeSchema, requestId),
     resilientRead("panchang", "panchang:global", endpoint("panchang", "/panchang"), panchangSchema, requestId),
   ]);
   return {

@@ -26,7 +26,7 @@ Open `http://localhost:5173` and use `user_101`. The API runs at `http://localho
 Copy `.env.example` for the full list. The main groups are:
 
 - Server and UI: `PORT`, `WEB_ORIGIN`, `DATABASE_PATH`
-- Upstreams: `UPSTREAM_BASE_URL` or the four service-specific URL overrides
+- Upstreams: `UPSTREAM_BASE_URL` or service-specific URL overrides. User-specific overrides may contain a `{userId}` placeholder or end in `/` to append the encoded user ID.
 - Resilience: timeout, attempt, backoff, cache TTL, and cache-capacity settings
 - Personalization: `RESPONSE_MAX_WORDS` and `CONTEXT_MAX_CHARS`
 - Generation: `GENERATION_MODE`, provider/model credentials, generation timeout, and output-token cap

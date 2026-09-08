@@ -9,7 +9,7 @@ let shuttingDown = false;
 const shutdown = () => {
   if (shuttingDown) return;
   shuttingDown = true;
-  const forceExit = setTimeout(() => process.exit(1), 5_000);
+  const forceExit = setTimeout(() => { database.close(); process.exit(1); }, 5_000);
   forceExit.unref();
   server.close(() => { clearTimeout(forceExit); database.close(); process.exit(0); });
 };

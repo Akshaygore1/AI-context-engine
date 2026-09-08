@@ -1,24 +1,8 @@
 import { config } from "../config.js";
 import type { ContextItem, GatheredContext, PersonalizationResult } from "../types.js";
 import type { IntentDetector } from "./intent.js";
+import { buildContextCatalog, type ContextId } from "./catalog.js";
 import { contextRules } from "./rules.js";
-
-interface CatalogEntry { id: string; label: string; source: "profile" | "kundli" | "horoscope" | "panchang"; value?: string }
-const catalog = (data: GatheredContext): Record<string, CatalogEntry> => ({
-  "horoscope.career": { id: "horoscope.career", label: "Career Horoscope", source: "horoscope", value: data.horoscope?.career },
-  "kundli.house10": { id: "kundli.house10", label: "10th House", source: "kundli", value: data.kundli?.houses["10"] },
-  "kundli.currentDasha": { id: "kundli.currentDasha", label: "Current Dasha", source: "kundli", value: data.kundli?.currentDasha },
-  "kundli.house7": { id: "kundli.house7", label: "7th House", source: "kundli", value: data.kundli?.houses["7"] },
-  "kundli.house6": { id: "kundli.house6", label: "6th House", source: "kundli", value: data.kundli?.houses["6"] },
-  "horoscope.relationship": { id: "horoscope.relationship", label: "Relationship Horoscope", source: "horoscope", value: data.horoscope?.relationship },
-  "horoscope.health": { id: "horoscope.health", label: "Health Horoscope", source: "horoscope", value: data.horoscope?.health },
-  "horoscope.finance": { id: "horoscope.finance", label: "Finance Horoscope", source: "horoscope", value: data.horoscope?.finance },
-  "panchang.guidance": { id: "panchang.guidance", label: "Panchang", source: "panchang", value: data.panchang ? `${data.panchang.tithi}; ${data.panchang.nakshatra}; ${data.panchang.guidance}` : undefined },
-  "profile.name": { id: "profile.name", label: "Name", source: "profile", value: data.profile?.name },
-  "profile.subscription": { id: "profile.subscription", label: "Subscription", source: "profile", value: data.profile?.subscription },
-  "kundli.moonSign": { id: "kundli.moonSign", label: "Moon Sign", source: "kundli", value: data.kundli?.moonSign },
-  "kundli.summary": { id: "kundli.summary", label: "Kundli Summary", source: "kundli", value: data.kundli ? `Moon sign: ${data.kundli.moonSign}; current dasha: ${data.kundli.currentDasha}` : undefined },
-});
 
 const supportedLanguages = new Map([["english", "English"], ["hindi", "Hindi"]]);
 const supportedTones = new Map([["supportive", "supportive"], ["direct", "direct"], ["gentle", "gentle"]]);
@@ -29,8 +13,8 @@ export class PersonalizationPipeline {
 
   run(question: string, data: GatheredContext): PersonalizationResult {
     const detected = this.detector.detect(question);
-    const entries = catalog(data);
-    const requested = new Map<string, "primary" | "secondary">();
+    const entries = buildContextCatalog(data);
+    const requested = new Map<ContextId, "primary" | "secondary">();
     for (const intent of detected.intents) {
       for (const id of contextRules[intent].primary) requested.set(id, "primary");
       for (const id of contextRules[intent].secondary) if (!requested.has(id)) requested.set(id, "secondary");

@@ -1,3 +1,8 @@
+import type { Intent } from "../types.js";
+import type { ContextId } from "./catalog.js";
+
+interface ContextRule { primary: readonly ContextId[]; secondary: readonly ContextId[] }
+
 export const contextRules = {
   career: {
     primary: ["horoscope.career", "kundli.house10"],
@@ -19,4 +24,4 @@ export const contextRules = {
     primary: ["horoscope.career", "horoscope.relationship", "horoscope.health", "horoscope.finance"],
     secondary: ["kundli.summary", "panchang.guidance"],
   },
-} as const;
+} as const satisfies Record<Intent, ContextRule>;

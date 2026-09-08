@@ -16,7 +16,6 @@ export function createApp() {
   const pipeline = new PersonalizationPipeline(new WeightedPhraseIntentDetector());
   const generator = createGenerator();
   app.use(cors({ origin: config.webOrigin }));
-  app.use(express.json({ limit: "16kb" }));
   app.use((req, res, next) => {
     const started = performance.now();
     const requestId = req.header("x-request-id") ?? randomUUID();
@@ -25,6 +24,7 @@ export function createApp() {
     res.on("finish", () => console.info(JSON.stringify({ requestId, route: req.path, status: res.statusCode, durationMs: Math.round(performance.now() - started) })));
     next();
   });
+  app.use(express.json({ limit: "16kb" }));
 
   const mockRoute = (path: string[], table: Parameters<typeof readPayload>[0], keyColumn: string, fixedKey?: number) =>
     app.get(path, (req, res) => {
@@ -66,7 +66,14 @@ export function createApp() {
   }
   app.use((_req, res) => res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found.", requestId: res.locals.requestId } }));
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    const known = error instanceof AppError ? error : new AppError(503, "SERVICE_UNAVAILABLE", "Personalization is temporarily unavailable. Please try again.");
+    const status = typeof error === "object" && error && "status" in error && typeof error.status === "number" ? error.status : undefined;
+    const known = error instanceof AppError
+      ? error
+      : status === 400
+        ? new AppError(400, "INVALID_JSON", "Request body must be valid JSON.")
+        : status === 413
+          ? new AppError(413, "PAYLOAD_TOO_LARGE", "Request body exceeds the 16 KB limit.")
+          : new AppError(503, "SERVICE_UNAVAILABLE", "Personalization is temporarily unavailable. Please try again.");
     res.status(known.status).json({ error: { code: known.code, message: known.message, requestId: res.locals.requestId } });
   });
   return app;
