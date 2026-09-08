@@ -20,5 +20,12 @@ export const config = {
   upstreamRetryBackoffMs: numberFromEnv("UPSTREAM_RETRY_BACKOFF_MS", 100),
   cacheTtlMs: numberFromEnv("CACHE_TTL_MS", 30_000),
   cacheMaxEntries: numberFromEnv("CACHE_MAX_ENTRIES", 100),
+  generationMode: process.env.GENERATION_MODE === "real" ? "real" as const : "mock" as const,
+  aiProvider: process.env.AI_PROVIDER ?? "openai",
+  aiModel: process.env.AI_MODEL ?? "gpt-5-mini",
+  openAiApiKey: process.env.OPENAI_API_KEY,
+  openAiBaseUrl: process.env.OPENAI_BASE_URL,
+  generationTimeoutMs: numberFromEnv("GENERATION_TIMEOUT_MS", 15_000),
+  generationMaxOutputTokens: numberFromEnv("GENERATION_MAX_OUTPUT_TOKENS", 500),
   databasePath: process.env.DATABASE_PATH ?? "data/context-engine.db",
 };

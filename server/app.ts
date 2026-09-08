@@ -3,7 +3,7 @@ import express from "express";
 import { randomUUID } from "node:crypto";
 import { config } from "./config.js";
 import { readPayload } from "./db/database.js";
-import { MockGenerator } from "./generation/mock.js";
+import { createGenerator } from "./generation/index.js";
 import { AppError } from "./http/errors.js";
 import { parsePersonalizationRequest } from "./http/validation.js";
 import { WeightedPhraseIntentDetector } from "./personalization/intent.js";
@@ -13,7 +13,7 @@ import { gatherContext } from "./upstream/client.js";
 export function createApp() {
   const app = express();
   const pipeline = new PersonalizationPipeline(new WeightedPhraseIntentDetector());
-  const generator = new MockGenerator();
+  const generator = createGenerator();
   app.use(cors({ origin: config.webOrigin }));
   app.use(express.json({ limit: "16kb" }));
   app.use((req, res, next) => {
@@ -52,8 +52,10 @@ export function createApp() {
   app.post("/api/personalize", async (req, res, next) => {
     try {
       const result = await decide(req.body);
-      const answer = await generator.generate(result);
-      res.json({ answer, confidence: result.decision.confidence, sourcesUsed: result.context.map((item) => item.label), mode: generator.mode, requestId: res.locals.requestId });
+      const generationStarted = performance.now();
+      const generated = await generator.generate(result);
+      console.info(JSON.stringify({ event: "generation", requestId: res.locals.requestId, mode: generator.mode, latencyMs: Math.round(performance.now() - generationStarted), promptCharacters: generated.promptCharacters, promptTokens: generated.usage?.inputTokens ?? generated.promptTokenEstimate, promptTokensMeasured: generated.usage?.inputTokens !== undefined, outputTokens: generated.usage?.outputTokens, totalTokens: generated.usage?.totalTokens }));
+      res.json({ answer: generated.text, confidence: result.decision.confidence, sourcesUsed: result.context.map((item) => item.label), mode: generator.mode, requestId: res.locals.requestId });
     } catch (error) { next(error); }
   });
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

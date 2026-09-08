@@ -80,5 +80,12 @@ export interface PersonalizationResult {
 
 export interface Generator {
   readonly mode: "mock" | "real";
-  generate(input: PersonalizationResult): Promise<string>;
+  generate(input: PersonalizationResult): Promise<GenerationResult>;
+}
+
+export interface GenerationResult {
+  text: string;
+  promptCharacters: number;
+  promptTokenEstimate: number;
+  usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
 }
