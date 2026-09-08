@@ -1,5 +1,5 @@
 export type Confidence = "HIGH" | "MEDIUM" | "LOW";
-export type Intent = "career";
+export type Intent = "career" | "relationship" | "health" | "finance" | "general";
 export type SourceName = "profile" | "kundli" | "horoscope" | "panchang";
 
 export interface UserProfile {
@@ -52,11 +52,14 @@ export interface Decision {
   intents: Intent[];
   selectedContext: Array<{ id: string; label: string; source: SourceName; priority: string }>;
   excludedContext: Array<{ id: string; label: string; reason: string }>;
+  budgetOmissions: Array<{ id: string; label: string; reason: string }>;
+  missingContext: Array<{ id: string; label: string; reason: string }>;
   language: string;
   tone: string;
   maxWords: number;
   reasons: string[];
   confidence: Confidence;
+  contextCharacters: number;
 }
 
 export interface PersonalizationResult {

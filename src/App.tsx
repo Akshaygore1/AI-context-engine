@@ -7,6 +7,14 @@ import { Input } from "./components/ui/input";
 import { Textarea } from "./components/ui/textarea";
 
 export default function App() {
+  const samples = [
+    ["Career", "What should I focus on to grow in my career?"],
+    ["Relationships", "How can I bring more patience to my relationship?"],
+    ["Health", "What routines could support my health and energy?"],
+    ["Finance", "How should I approach my financial priorities?"],
+    ["Mixed", "How can I balance career growth with my relationship?"],
+    ["General", "What themes should I keep in mind right now?"],
+  ];
   const [userId, setUserId] = useState("user_101");
   const [question, setQuestion] = useState("What should I focus on to grow in my career?");
   const [answer, setAnswer] = useState<AnswerResult>();
@@ -28,14 +36,14 @@ export default function App() {
         <div className="section-label">Your question</div>
         <label htmlFor="user-id">User ID</label><Input id="user-id" value={userId} onChange={(event) => setUserId(event.target.value)} />
         <label htmlFor="question">What would you like guidance on?</label><Textarea id="question" rows={5} value={question} onChange={(event) => setQuestion(event.target.value)} />
-        <button className="sample" onClick={() => setQuestion("What should I focus on to grow in my career?")}>Try the career example <ArrowRight size={14} /></button>
+        <div className="samples" aria-label="Sample questions">{samples.map(([label, value]) => <button key={label} className="sample" onClick={() => setQuestion(value)}>{label}<ArrowRight size={13} /></button>)}</div>
         {error && <div className="error" role="alert">{error}</div>}
         <div className="actions"><Button onClick={() => submit("answer")} disabled={!!pending}>{pending === "answer" ? "Creating guidance…" : "Get guidance"}</Button><Button className="secondary" onClick={() => submit("debug")} disabled={!!pending}><Search size={16} />{pending === "debug" ? "Inspecting…" : "Inspect context"}</Button></div>
         <p className="disclosure">Demo runs in disclosed mock mode. Confidence measures context coverage; sources are the context supplied to generation.</p>
       </Card>
       <div className="results">
         {answer ? <Card><div className="result-head"><span className="section-label">Personalized guidance</span><span className="mode">{answer.mode} mode</span></div><p className="answer">{answer.answer}</p><div className="metadata"><span><strong>{answer.confidence}</strong> context coverage</span><span>{answer.sourcesUsed.join(" · ")}</span></div></Card> : <Card className="empty"><Sparkles /><p>Your guidance will appear here.</p></Card>}
-        {debug && <Card><div className="result-head"><span className="section-label">Independent context inspection</span><span className="mode">{debug.intent}</span></div><div className="debug-grid"><div><small>Selected</small>{debug.selectedContext.map((item) => <p key={item.id}><strong>{item.label}</strong> · {item.priority}</p>)}</div><div><small>Preferences</small><p>{debug.language} · {debug.tone} · {debug.maxWords} words</p><small>Why</small><p>{debug.reasons.join(" ")}</p></div></div></Card>}
+        {debug && <Card><div className="result-head"><span className="section-label">Independent context inspection</span><span className="mode">{debug.intents.join(" + ")}</span></div><div className="debug-grid"><div><small>Selected</small>{debug.selectedContext.map((item) => <p key={item.id}><strong>{item.label}</strong> · {item.priority}</p>)}{debug.budgetOmissions.length > 0 && <><small>Budget omissions</small>{debug.budgetOmissions.map((item) => <p key={item.id}><strong>{item.label}</strong> · {item.reason}</p>)}</>}</div><div><small>Preferences</small><p>{debug.language} · {debug.tone} · {debug.maxWords} words</p><small>Why</small><p>{debug.reasons.join(" ")}</p><small>Deliberately excluded</small><p>{debug.excludedContext.map((item) => item.label).join(" · ") || "None"}</p></div></div></Card>}
       </div>
     </div>
   </main>;
