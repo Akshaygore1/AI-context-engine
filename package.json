@@ -1,0 +1,43 @@
+{
+  "name": "ai-context-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"tsx watch server/index.ts\" \"vite\"",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:web": "vite",
+    "seed": "tsx server/db/seed.ts",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "build": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit && vite build && tsup server/index.ts --format esm --out-dir dist/server --clean",
+    "start": "node dist/server/index.js"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "latest",
+    "ai": "latest",
+    "better-sqlite3": "latest",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "cors": "latest",
+    "express": "latest",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwind-merge": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "latest",
+    "@types/cors": "latest",
+    "@types/express": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "concurrently": "latest",
+    "tsx": "latest",
+    "tsup": "latest",
+    "typescript": "latest",
+    "vite": "latest"
+  }
+}
