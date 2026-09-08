@@ -1,7 +1,7 @@
 import { config } from "../config.js";
 import type { ContextItem, GatheredContext, PersonalizationResult } from "../types.js";
 import type { IntentDetector } from "./intent.js";
-import { buildContextCatalog, type ContextId } from "./catalog.js";
+import { buildContextCatalog, contextComposition, type ContextId } from "./catalog.js";
 import { contextRules } from "./rules.js";
 
 const supportedLanguages = new Map([["english", "English"], ["hindi", "Hindi"]]);
@@ -36,6 +36,10 @@ export class PersonalizationPipeline {
       }
     }
     const selectedIds = new Set(context.map((item) => item.id));
+    const representedIds = new Set(selectedIds);
+    for (const selectedId of selectedIds) {
+      for (const representedId of contextComposition[selectedId as ContextId] ?? []) representedIds.add(representedId);
+    }
     return {
       question,
       context,
@@ -43,7 +47,7 @@ export class PersonalizationPipeline {
         intent: detected.primary,
         intents: detected.intents,
         selectedContext: context.map(({ id, label, source, priority }) => ({ id, label, source, priority })),
-        excludedContext: Object.values(entries).filter((item) => !selectedIds.has(item.id) && !requested.has(item.id)).map(({ id, label }) => ({ id, label, reason: `Deliberately excluded because it is not relevant to: ${detected.intents.join(", ")}.` })),
+        excludedContext: Object.values(entries).filter((item) => !representedIds.has(item.id) && !requested.has(item.id)).map(({ id, label }) => ({ id, label, reason: `Deliberately excluded because it is not relevant to: ${detected.intents.join(", ")}.` })),
         budgetOmissions,
         missingContext,
         language: normalize(data.profile?.preferredLanguage ?? "", supportedLanguages, "English"),

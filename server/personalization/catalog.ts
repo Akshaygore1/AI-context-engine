@@ -23,3 +23,7 @@ export function buildContextCatalog(data: GatheredContext) {
 }
 
 export type ContextId = keyof ReturnType<typeof buildContextCatalog>;
+
+export const contextComposition: Partial<Record<ContextId, readonly ContextId[]>> = {
+  "kundli.summary": ["kundli.moonSign", "kundli.currentDasha"],
+};
