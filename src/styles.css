@@ -33,5 +33,6 @@ label { margin-top: 13px; font-size: 14px; font-weight: 600; }
 .debug-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
 .debug-grid small { color: #948c82; text-transform: uppercase; letter-spacing: .1em; }
 .debug-grid p { font-size: 13px; line-height: 1.5; }
+.debug-grid .limitation { color: #9a4c31; }
 .error { background: #fff0e9; color: #8e351e; padding: 10px 12px; border-radius: 9px; font-size: 13px; }
 @media (max-width: 760px) { main { width: min(100% - 24px, 620px); padding-top: 42px; } .workspace { grid-template-columns: 1fr; } .actions, .metadata { flex-direction: column; } .debug-grid { grid-template-columns: 1fr; } .button { width: 100%; } }

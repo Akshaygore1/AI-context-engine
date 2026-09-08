@@ -41,7 +41,10 @@ export function createApp() {
   const decide = async (body: unknown) => {
     const input = parsePersonalizationRequest(body);
     const data = await gatherContext(input.userId);
-    return pipeline.run(input.question, data);
+    const result = pipeline.run(input.question, data);
+    if (result.context.length === 0) throw new AppError(503, "CONTEXT_UNAVAILABLE", "Relevant astrological context is temporarily unavailable. Please try again.");
+    console.info(JSON.stringify({ event: "decision", selectedContextCount: result.context.length, unavailableSources: result.decision.unavailableSources.map((item) => item.source), contextCharacters: result.decision.contextCharacters }));
+    return result;
   };
   app.post("/api/debug/personalization", async (req, res, next) => {
     try { const result = await decide(req.body); res.json({ ...result.decision, requestId: res.locals.requestId }); } catch (error) { next(error); }

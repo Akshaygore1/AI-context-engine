@@ -5,6 +5,7 @@ export class MockGenerator implements Generator {
   async generate(input: Parameters<Generator["generate"]>[0]): Promise<string> {
     const strongest = input.context.filter((item) => item.priority === "primary").slice(0, 2).map((item) => item.value).join(" ");
     const topic = input.decision.intents.join(" and ");
-    return `Your ${topic} context suggests a steady, reflective approach. ${strongest} Use this as perspective rather than a guaranteed prediction: choose one practical next step, check it against your circumstances, and seek qualified advice for consequential health or financial decisions.`;
+    const limitation = input.decision.missingContext.length ? ` Some expected context was unavailable (${input.decision.missingContext.map((item) => item.label).join(", ")}), so keep this guidance appropriately qualified.` : "";
+    return `Your ${topic} context suggests a steady, reflective approach. ${strongest}${limitation} Use this as perspective rather than a guaranteed prediction: choose one practical next step, check it against your circumstances, and seek qualified advice for consequential health or financial decisions.`;
   }
 }

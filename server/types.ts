@@ -33,10 +33,19 @@ export interface Panchang {
 }
 
 export interface GatheredContext {
-  profile: UserProfile;
-  kundli: Kundli;
-  horoscope: Horoscope;
-  panchang: Panchang;
+  profile?: UserProfile;
+  kundli?: Kundli;
+  horoscope?: Horoscope;
+  panchang?: Panchang;
+  outcomes: Record<SourceName, UpstreamOutcome>;
+}
+
+export interface UpstreamOutcome {
+  available: boolean;
+  attempts: number;
+  latencyMs: number;
+  cache: "hit" | "miss";
+  reason?: string;
 }
 
 export interface ContextItem {
@@ -60,6 +69,7 @@ export interface Decision {
   reasons: string[];
   confidence: Confidence;
   contextCharacters: number;
+  unavailableSources: Array<{ source: SourceName; reason: string }>;
 }
 
 export interface PersonalizationResult {
