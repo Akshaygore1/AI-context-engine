@@ -5,6 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    proxy: { "/api": "http://localhost:3001" },
+    proxy: {
+      "/personalize": "http://localhost:3001",
+      "/debug": "http://localhost:3001",
+      "/health": "http://localhost:3001"
+    },
   },
 });

@@ -13,12 +13,12 @@ type ReadResult<T> = { value?: T; outcome: UpstreamOutcome };
 const wait = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const shouldRetry = (status?: number) => status === undefined || status === 408 || status === 429 || status >= 500;
 
-async function resilientRead<T>(source: SourceName, key: string, url: string, schema: z.ZodType<T>): Promise<ReadResult<T>> {
+async function resilientRead<T>(source: SourceName, key: string, url: string, schema: z.ZodType<T>, requestId: string): Promise<ReadResult<T>> {
   const started = performance.now();
   const cached = cache.get<T>(key);
   if (cached) {
     const outcome = { available: true, attempts: 0, latencyMs: Math.round(performance.now() - started), cache: "hit" as const };
-    console.info(JSON.stringify({ event: "upstream", source, ...outcome }));
+    console.info(JSON.stringify({ event: "upstream", requestId, source, ...outcome }));
     return { value: cached, outcome };
   }
   let lastReason = "Upstream service did not respond.";
@@ -35,7 +35,7 @@ async function resilientRead<T>(source: SourceName, key: string, url: string, sc
         if (!parsed.success) { lastReason = "Upstream returned an invalid payload."; break; }
         cache.set(key, parsed.data, config.cacheTtlMs);
         const outcome = { available: true, attempts, latencyMs: Math.round(performance.now() - started), cache: "miss" as const };
-        console.info(JSON.stringify({ event: "upstream", source, ...outcome }));
+        console.info(JSON.stringify({ event: "upstream", requestId, source, ...outcome }));
         return { value: parsed.data, outcome };
       }
     } catch (error) {
@@ -44,19 +44,19 @@ async function resilientRead<T>(source: SourceName, key: string, url: string, sc
     if (attempt < config.upstreamMaxAttempts) await wait(config.upstreamRetryBackoffMs * attempt);
   }
   const outcome = { available: false, attempts, latencyMs: Math.round(performance.now() - started), cache: "miss" as const, reason: lastReason };
-  console.warn(JSON.stringify({ event: "upstream", source, ...outcome }));
+  console.warn(JSON.stringify({ event: "upstream", requestId, source, ...outcome }));
   return { outcome };
 }
 
 const endpoint = (source: SourceName, fallbackPath: string) => config.serviceUrls[source] || `${config.upstreamBaseUrl}${fallbackPath}`;
 
-export async function gatherContext(userId: string): Promise<GatheredContext> {
+export async function gatherContext(userId: string, requestId: string): Promise<GatheredContext> {
   const encodedUser = encodeURIComponent(userId);
   const [profile, kundli, horoscope, panchang] = await Promise.all([
-    resilientRead("profile", `profile:${userId}`, endpoint("profile", `/users/${encodedUser}`), profileSchema),
-    resilientRead("kundli", `kundli:${userId}`, endpoint("kundli", `/kundli/${encodedUser}`), kundliSchema),
-    resilientRead("horoscope", `horoscope:${userId}`, endpoint("horoscope", `/horoscope/${encodedUser}`), horoscopeSchema),
-    resilientRead("panchang", "panchang:global", endpoint("panchang", "/panchang"), panchangSchema),
+    resilientRead("profile", `profile:${userId}`, endpoint("profile", `/users/${encodedUser}`), profileSchema, requestId),
+    resilientRead("kundli", `kundli:${userId}`, endpoint("kundli", `/kundli/${encodedUser}`), kundliSchema, requestId),
+    resilientRead("horoscope", `horoscope:${userId}`, endpoint("horoscope", `/horoscope/${encodedUser}`), horoscopeSchema, requestId),
+    resilientRead("panchang", "panchang:global", endpoint("panchang", "/panchang"), panchangSchema, requestId),
   ]);
   return {
     profile: profile.value as UserProfile | undefined,

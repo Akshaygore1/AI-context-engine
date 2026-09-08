@@ -21,17 +21,29 @@ Open `http://localhost:5173` and use `user_101`. The API runs at `http://localho
 - `npm run build` — type-check and create production client/server bundles
 - `npm start` — run the built API after `npm run build`
 
+## Environment
+
+Copy `.env.example` for the full list. The main groups are:
+
+- Server and UI: `PORT`, `WEB_ORIGIN`, `DATABASE_PATH`
+- Upstreams: `UPSTREAM_BASE_URL` or the four service-specific URL overrides
+- Resilience: timeout, attempt, backoff, cache TTL, and cache-capacity settings
+- Personalization: `RESPONSE_MAX_WORDS` and `CONTEXT_MAX_CHARS`
+- Generation: `GENERATION_MODE`, provider/model credentials, generation timeout, and output-token cap
+
 ## API
 
-`POST /api/personalize` and `POST /api/debug/personalization` accept:
+`POST /personalize` and `POST /debug/personalization` accept:
 
 ```json
 { "userId": "user_101", "question": "What should I focus on to grow in my career?" }
 ```
 
-The debug endpoint runs the same context decision without generation. Mock service contracts are available at `GET /api/mock/users/:userId`, `/api/mock/kundli/:userId`, `/api/mock/horoscope/:userId`, and `/api/mock/panchang`. Set `UPSTREAM_BASE_URL` to replace their common base address.
+The debug endpoint runs the same context decision without generation. Mock service contracts are available at `GET /users/:userId`, `/kundli/:userId`, `/horoscope/:userId`, and `/panchang`. `/api/mock/*` aliases support the default internal service base. Set `UPSTREAM_BASE_URL` to replace their common base address or use the service-specific URL variables.
 
 The weighted phrase configuration supports career, relationship, health, finance, and mixed-topic questions, with a general fallback. Matching is deterministic: ties use the documented intent order, and mixed matches union fields before applying the primary-first `CONTEXT_MAX_CHARS` budget. Add phrases in `server/personalization/intent.ts`, fields in the centralized catalog, and mappings in `server/personalization/rules.ts`.
+
+Useful samples include “What should I focus on to grow in my career?”, “How can I bring more patience to my relationship?”, “What routines could support my health and energy?”, “How should I approach my financial priorities?”, “How can I balance career growth with my relationship?”, and the general “What themes should I keep in mind right now?”.
 
 Profile language and tone are normalized to supported values, falling back to English and supportive. The phrase classifier is intentionally limited with unusual wording and multilingual questions; response language preferences do not make classification multilingual. Confidence means coverage of expected context, including budget omissions. Sources identify context supplied to generation, rather than claims cited in the prose. Birth details, subscription behavior, conversation history, precise timeframe matching, and guaranteed predictions are outside this MVP.
 

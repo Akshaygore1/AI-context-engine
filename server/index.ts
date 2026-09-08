@@ -5,6 +5,13 @@ import { config } from "./config.js";
 seedDatabase();
 const server = createApp().listen(config.port, () => console.info(`Context engine listening on http://localhost:${config.port}`));
 
-const shutdown = () => server.close(() => { database.close(); process.exit(0); });
+let shuttingDown = false;
+const shutdown = () => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  const forceExit = setTimeout(() => process.exit(1), 5_000);
+  forceExit.unref();
+  server.close(() => { clearTimeout(forceExit); database.close(); process.exit(0); });
+};
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);

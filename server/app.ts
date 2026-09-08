@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import { randomUUID } from "node:crypto";
+import { resolve } from "node:path";
 import { config } from "./config.js";
 import { readPayload } from "./db/database.js";
 import { createGenerator } from "./generation/index.js";
@@ -25,7 +26,7 @@ export function createApp() {
     next();
   });
 
-  const mockRoute = (path: string, table: Parameters<typeof readPayload>[0], keyColumn: string, fixedKey?: number) =>
+  const mockRoute = (path: string[], table: Parameters<typeof readPayload>[0], keyColumn: string, fixedKey?: number) =>
     app.get(path, (req, res) => {
       const parameter = req.params.userId;
       const key = fixedKey ?? (Array.isArray(parameter) ? parameter[0] : parameter);
@@ -33,31 +34,37 @@ export function createApp() {
       if (!value) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Resource not found.", requestId: res.locals.requestId } });
       return res.json(value);
     });
-  mockRoute("/api/mock/users/:userId", "users", "id");
-  mockRoute("/api/mock/kundli/:userId", "kundli", "user_id");
-  mockRoute("/api/mock/horoscope/:userId", "horoscope", "user_id");
-  mockRoute("/api/mock/panchang", "panchang", "id", 1);
+  mockRoute(["/users/:userId", "/api/mock/users/:userId"], "users", "id");
+  mockRoute(["/kundli/:userId", "/api/mock/kundli/:userId"], "kundli", "user_id");
+  mockRoute(["/horoscope/:userId", "/api/mock/horoscope/:userId"], "horoscope", "user_id");
+  mockRoute(["/panchang", "/api/mock/panchang"], "panchang", "id", 1);
+  app.get("/health", (_req, res) => res.json({ status: "ok", generationMode: generator.mode }));
 
-  const decide = async (body: unknown) => {
+  const decide = async (body: unknown, requestId: string) => {
     const input = parsePersonalizationRequest(body);
-    const data = await gatherContext(input.userId);
+    const data = await gatherContext(input.userId, requestId);
     const result = pipeline.run(input.question, data);
     if (result.context.length === 0) throw new AppError(503, "CONTEXT_UNAVAILABLE", "Relevant astrological context is temporarily unavailable. Please try again.");
-    console.info(JSON.stringify({ event: "decision", selectedContextCount: result.context.length, unavailableSources: result.decision.unavailableSources.map((item) => item.source), contextCharacters: result.decision.contextCharacters }));
+    console.info(JSON.stringify({ event: "decision", requestId, selectedContextCount: result.context.length, unavailableSources: result.decision.unavailableSources.map((item) => item.source), contextCharacters: result.decision.contextCharacters }));
     return result;
   };
-  app.post("/api/debug/personalization", async (req, res, next) => {
-    try { const result = await decide(req.body); res.json({ ...result.decision, requestId: res.locals.requestId }); } catch (error) { next(error); }
+  app.post(["/debug/personalization", "/api/debug/personalization"], async (req, res, next) => {
+    try { const result = await decide(req.body, res.locals.requestId); res.json({ ...result.decision, requestId: res.locals.requestId }); } catch (error) { next(error); }
   });
-  app.post("/api/personalize", async (req, res, next) => {
+  app.post(["/personalize", "/api/personalize"], async (req, res, next) => {
     try {
-      const result = await decide(req.body);
+      const result = await decide(req.body, res.locals.requestId);
       const generationStarted = performance.now();
       const generated = await generator.generate(result);
       console.info(JSON.stringify({ event: "generation", requestId: res.locals.requestId, mode: generator.mode, latencyMs: Math.round(performance.now() - generationStarted), promptCharacters: generated.promptCharacters, promptTokens: generated.usage?.inputTokens ?? generated.promptTokenEstimate, promptTokensMeasured: generated.usage?.inputTokens !== undefined, outputTokens: generated.usage?.outputTokens, totalTokens: generated.usage?.totalTokens }));
       res.json({ answer: generated.text, confidence: result.decision.confidence, sourcesUsed: result.context.map((item) => item.label), mode: generator.mode, requestId: res.locals.requestId });
     } catch (error) { next(error); }
   });
+  if (process.env.NODE_ENV === "production") {
+    app.use(express.static(resolve("dist")));
+    app.get("/{*splat}", (req, res, next) => req.path.startsWith("/api/") ? next() : res.sendFile(resolve("dist/index.html")));
+  }
+  app.use((_req, res) => res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found.", requestId: res.locals.requestId } }));
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const known = error instanceof AppError ? error : new AppError(503, "SERVICE_UNAVAILABLE", "Personalization is temporarily unavailable. Please try again.");
     res.status(known.status).json({ error: { code: known.code, message: known.message, requestId: res.locals.requestId } });

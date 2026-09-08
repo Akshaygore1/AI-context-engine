@@ -10,7 +10,7 @@
     "seed": "tsx server/db/seed.ts",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
     "build": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit && vite build && tsup server/index.ts --format esm --out-dir dist/server --clean",
-    "start": "node dist/server/index.js"
+    "start": "NODE_ENV=production node dist/server/index.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
