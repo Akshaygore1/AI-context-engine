@@ -18,11 +18,13 @@ Both passed. The Vite client and bundled Express server production artifacts wer
 - Empty and oversized input validation with safe request-ID errors
 - A repeated request showing cache miss then hit
 - Profile-only failure with default preferences
+- A valid profile payload carrying another user ID, rejected before selection or caching
 - One relevant-source failure with qualified confidence and limitations
 - All relevant sources unavailable with `CONTEXT_UNAVAILABLE` and no generation
 - Real mode without credentials with `GENERATION_UNAVAILABLE`; debug remains usable
+- Complete debug exclusions for birth details, ascendant, planet positions, and Panchang yoga
 
-All supported answer and debug requests returned their expected intent, selected sources, confidence, mode, and request ID. Empty input returned `INVALID_REQUEST`; malformed JSON returned `INVALID_JSON` (400), and a body over 16 KB returned `PAYLOAD_TOO_LARGE` (413), each with a request ID. A fresh-process Horoscope failure returned MEDIUM career guidance with explicit missing context; a finance request returned `CONTEXT_UNAVAILABLE` because no relevant context survived. A repeated mixed request showed four misses followed by four hits with correlated request IDs. A malformed upstream JSON response was marked unavailable after one attempt. User-specific URL templates containing `{userId}` successfully resolved all three per-user services. Explicit real mode without a key returned `GENERATION_UNAVAILABLE`, while debug remained successful.
+All supported answer and debug requests returned their expected intent, selected sources, confidence, mode, and request ID. Empty input returned `INVALID_REQUEST`; malformed JSON returned `INVALID_JSON` (400), and a body over 16 KB returned `PAYLOAD_TOO_LARGE` (413), each with a request ID. A fresh-process Horoscope failure returned MEDIUM career guidance with explicit missing context; a finance request returned `CONTEXT_UNAVAILABLE` because no relevant context survived. A repeated mixed request showed four misses followed by four hits with correlated request IDs. A malformed upstream JSON response was marked unavailable after one attempt. User-specific URL templates containing `{userId}` successfully resolved all three per-user services. An otherwise valid profile for a different user was rejected as an invalid upstream payload; the decision used default preferences and reported the profile source unavailable. Debug output listed all non-selected source fields with reasons, including sensitive astrological and birth fields. Explicit real mode without a key returned `GENERATION_UNAVAILABLE`, while debug remained successful; generation failure logs included outcome, latency, and estimated prompt size without prompt content.
 
 ## Browser matrix
 

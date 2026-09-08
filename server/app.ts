@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { config } from "./config.js";
 import { readPayload } from "./db/database.js";
 import { createGenerator } from "./generation/index.js";
+import { buildGenerationPrompt, generationSystemPrompt } from "./generation/prompt.js";
 import { AppError } from "./http/errors.js";
 import { parsePersonalizationRequest } from "./http/validation.js";
 import { WeightedPhraseIntentDetector } from "./personalization/intent.js";
@@ -55,9 +56,15 @@ export function createApp() {
     try {
       const result = await decide(req.body, res.locals.requestId);
       const generationStarted = performance.now();
-      const generated = await generator.generate(result);
-      console.info(JSON.stringify({ event: "generation", requestId: res.locals.requestId, mode: generator.mode, latencyMs: Math.round(performance.now() - generationStarted), promptCharacters: generated.promptCharacters, promptTokens: generated.usage?.inputTokens ?? generated.promptTokenEstimate, promptTokensMeasured: generated.usage?.inputTokens !== undefined, outputTokens: generated.usage?.outputTokens, totalTokens: generated.usage?.totalTokens }));
-      res.json({ answer: generated.text, confidence: result.decision.confidence, sourcesUsed: result.context.map((item) => item.label), mode: generator.mode, requestId: res.locals.requestId });
+      const promptCharacters = generationSystemPrompt.length + buildGenerationPrompt(result).length;
+      try {
+        const generated = await generator.generate(result);
+        console.info(JSON.stringify({ event: "generation", requestId: res.locals.requestId, mode: generator.mode, outcome: "success", latencyMs: Math.round(performance.now() - generationStarted), promptCharacters: generated.promptCharacters, promptTokens: generated.usage?.inputTokens ?? generated.promptTokenEstimate, promptTokensMeasured: generated.usage?.inputTokens !== undefined, outputTokens: generated.usage?.outputTokens, totalTokens: generated.usage?.totalTokens }));
+        res.json({ answer: generated.text, confidence: result.decision.confidence, sourcesUsed: result.context.map((item) => item.label), mode: generator.mode, requestId: res.locals.requestId });
+      } catch (error) {
+        console.warn(JSON.stringify({ event: "generation", requestId: res.locals.requestId, mode: generator.mode, outcome: "failure", latencyMs: Math.round(performance.now() - generationStarted), promptCharacters, promptTokens: Math.ceil(promptCharacters / 4), promptTokensMeasured: false }));
+        throw error;
+      }
     } catch (error) { next(error); }
   });
   if (process.env.NODE_ENV === "production") {

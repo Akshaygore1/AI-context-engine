@@ -61,10 +61,13 @@ const endpoint = (source: SourceName, fallbackPath: string, encodedUser?: string
 
 export async function gatherContext(userId: string, requestId: string): Promise<GatheredContext> {
   const encodedUser = encodeURIComponent(userId);
+  const requestedProfileSchema = profileSchema.refine((profile) => profile.id === userId, { message: "Profile belongs to a different user." });
+  const requestedKundliSchema = kundliSchema.refine((kundli) => kundli.userId === userId, { message: "Kundli belongs to a different user." });
+  const requestedHoroscopeSchema = horoscopeSchema.refine((horoscope) => horoscope.userId === userId, { message: "Horoscope belongs to a different user." });
   const [profile, kundli, horoscope, panchang] = await Promise.all([
-    resilientRead("profile", `profile:${userId}`, endpoint("profile", `/users/${encodedUser}`, encodedUser), profileSchema, requestId),
-    resilientRead("kundli", `kundli:${userId}`, endpoint("kundli", `/kundli/${encodedUser}`, encodedUser), kundliSchema, requestId),
-    resilientRead("horoscope", `horoscope:${userId}`, endpoint("horoscope", `/horoscope/${encodedUser}`, encodedUser), horoscopeSchema, requestId),
+    resilientRead("profile", `profile:${userId}`, endpoint("profile", `/users/${encodedUser}`, encodedUser), requestedProfileSchema, requestId),
+    resilientRead("kundli", `kundli:${userId}`, endpoint("kundli", `/kundli/${encodedUser}`, encodedUser), requestedKundliSchema, requestId),
+    resilientRead("horoscope", `horoscope:${userId}`, endpoint("horoscope", `/horoscope/${encodedUser}`, encodedUser), requestedHoroscopeSchema, requestId),
     resilientRead("panchang", "panchang:global", endpoint("panchang", "/panchang"), panchangSchema, requestId),
   ]);
   return {
