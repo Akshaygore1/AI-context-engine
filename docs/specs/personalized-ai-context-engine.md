@@ -8,7 +8,7 @@ The assignment requires an intelligence layer between those services and an LLM.
 
 ## Solution
 
-Build an Express backend in TypeScript with SQLite-backed mock upstream services, a configuration-driven personalization pipeline, and Vercel AI SDK for answer generation. Provide a simple React UI using shadcn/ui components for entering questions, displaying answers, and inspecting personalization decisions.
+Build an Express backend in TypeScript with deterministic in-code mock upstream fixtures, a configuration-driven personalization pipeline, and Vercel AI SDK for answer generation. Provide a simple React UI using shadcn/ui components for entering questions, displaying answers, and inspecting personalization decisions.
 
 Fetch upstream context concurrently, detect one or more intents deterministically, select only configured relevant fields, apply the profile's language and tone, and construct a compact prompt. Compute confidence and source metadata in the backend. Support useful partial responses when relevant data is missing and a structured unavailable response when no relevant context remains.
 
@@ -40,27 +40,29 @@ The MVP prioritizes clear boundaries and explainable decisions. It does not incl
 22. As a developer, I want concurrent upstream fetching with bounded retries and timeouts, so that slow dependencies have controlled impact.
 23. As a developer, I want successful upstream reads cached in memory, so that repeated requests avoid unnecessary work.
 24. As an operator, I want request, latency, cache, failure, and prompt-size logging, so that I can understand performance and degradation.
-25. As a developer, I want SQLite-backed seed data and documented startup commands, so that the demonstration is reproducible locally.
+25. As a developer, I want typed in-code fixture data with no seed step, so that the demonstration is reproducible locally.
 26. As a maintainer, I want a written prohibition on tests, so that future agents respect the agreed MVP constraint.
 27. As a candidate, I want architecture and trade-offs documented, so that I can defend the implementation in the follow-up discussion.
+28. As a demo user, I want to switch among server-approved OpenAI, Anthropic, Google, and deterministic mock models for my next answer.
 
 ## Implementation Decisions
 
 ### Stack and boundaries
 
-- Use TypeScript throughout, Express for HTTP, SQLite for local mock data, React for the UI, and shadcn/ui for interface components. Express is selected over NestJS to keep this small service straightforward.
+- Use TypeScript throughout, Express for HTTP, typed constants for local mock data, React for the UI, and shadcn/ui for interface components. Express is selected over NestJS to keep this small service straightforward.
 - Separate HTTP validation/error mapping, upstream clients, cache/retry policy, intent detection, context-selection configuration, personalization, prompt construction, LLM generation, and logging.
-- SQLite stores seeded mock service data, not the required upstream cache. Do not introduce conversation persistence or user management.
+- Typed constants store mock service data separately from the required upstream cache. Do not introduce persistence, conversation storage, or user management.
 - Serve mock User, Kundli, Horoscope, and Panchang endpoints over HTTP so the upstream client behavior is demonstrable. Keep upstream addresses configurable for replacement with real services.
 
 ### API contracts
 
-- `POST /personalize` accepts `userId` and `question` as nonempty strings with reasonable size limits. It returns `answer`, `confidence` (`HIGH`, `MEDIUM`, or `LOW`), and `sourcesUsed` as human-readable labels.
+- `GET /generation/options` returns the server default and only available provider/model pairs. It never returns credentials or base URLs.
+- `POST /personalize` accepts `userId` and `question` plus an optional `generation: { provider, model }`; omission uses the configured default. Validate explicit pairs before context gathering and return `INVALID_GENERATION_SELECTION` for unavailable pairs. It returns `answer`, `confidence`, `sourcesUsed`, and authoritative `provider`, `model`, and `mode` fields.
 - `POST /debug/personalization` accepts the same request and runs the same gathering and personalization pipeline without invoking an LLM. Return the primary `intent`, all matched `intents`, selected and excluded context labels, language, tone, shared word limit, and concise selection or availability reasons.
 - Backend source metadata denotes context supplied to generation; it is not a claim that every field was cited in the answer. Explain this meaning in the UI and documentation.
 - Use consistent structured errors with a stable code, safe message, and request ID. Invalid input is a client error; no relevant context or unavailable generation is a service-unavailable error. Do not expose internal stack traces or credentials.
 - Provide the supplied mock contracts: `GET /users/{userId}`, `GET /kundli/{userId}`, `GET /horoscope/{userId}`, and `GET /panchang`.
-- Seed `user_101` using the assignment's supplied data and schemas. Do not add validity-date fields. A supplied subscription field may remain in the mock contract but has no effect anywhere in personalization or UI.
+- Define `user_101` using the assignment's supplied data and schemas. Do not add validity-date fields. A supplied subscription field may remain in the mock contract but has no effect anywhere in personalization or UI. User-specific mock routes return a structured `NOT_FOUND` response for every other ID.
 
 ### Upstream resilience and caching
 
@@ -91,7 +93,7 @@ The MVP prioritizes clear boundaries and explainable decisions. It does not incl
 - Use one configurable response word limit for all users. Subscription never affects context access, output length, or any other behavior.
 - Select context deterministically and impose a configurable prompt/context budget. Keep primary fields ahead of secondary fields and record budget exclusions in debug output. Keep the model output token cap distinct from the word target.
 - Build the prompt from the question, selected context, response preferences, and concise grounding instructions. Treat user questions and upstream strings as untrusted content, not instructions that can override system behavior.
-- Use Vercel AI SDK behind a small generation boundary with configurable provider/model credentials and a bounded generation timeout. The LLM generates only the answer; the backend owns confidence and source labels.
+- Use the Vercel AI SDK provider registry behind a small generation boundary, resolving `provider:model` identifiers for configured OpenAI, Anthropic, and Google models. Expose a real provider only when its server-side credential and comma-separated model allowlist are configured. Preserve `GENERATION_MODE`, `AI_PROVIDER`, `AI_MODEL`, and `OPENAI_BASE_URL` as default configuration. The LLM generates only the answer; the backend owns confidence and source labels.
 - Provide an explicit mock implementation for credential-free demonstration. Clearly disclose mock mode and its limitations; do not silently substitute a mock answer after a configured real provider fails.
 - Confidence describes selected-context coverage, never the truth or predictive certainty of astrology. Use a documented deterministic rubric: HIGH when expected relevant context and profile are available, MEDIUM when relevant primary context remains but expected context or profile is missing, LOW when only relevant secondary context remains. Calculate against the selected intents and account for budget omissions.
 - With some relevant context available, return a qualified answer and lower confidence as appropriate. With no relevant astrological context, return a structured unavailable error instead of generating an answer from profile data alone.
@@ -99,13 +101,13 @@ The MVP prioritizes clear boundaries and explainable decisions. It does not incl
 
 ### Demo UI and operations
 
-- Provide a user ID input, question input, sample-question shortcuts, submit action, loading state, and clear recoverable error feedback.
-- Display the answer, backend-calculated confidence, source labels, and visible generation mode. Include an inspection panel for intent, selected/excluded context, preferences, and availability reasons.
+- Provide a full-height chat workspace with desktop navigation, compact provider/model selectors, a latest-exchange transcript, sample prompts, a sticky multiline composer, loading state, retry, and clear recoverable error feedback. Enter submits and Shift+Enter inserts a newline. New prompt clears the exchange but keeps the user and generation selection.
+- Display the answer, backend-calculated confidence, source labels, provider, model, and visible generation mode. Put intent, selected/missing/excluded context, preferences, evaluation time, and reasons in an accessible right-side sheet. Collapse navigation and inspection into drawers on narrow screens.
 - Provide a separate debug action that works without an API key and never triggers answer generation. If inspection and generation are separate requests, present the debug result as its own evaluation rather than implying an atomic shared snapshot.
 - Use shadcn/ui components for the form and AI response presentation. Keep the layout responsive and inputs labeled; a full chatbot product or specialized third-party AI component package is not required.
 - Log request IDs, routes, status, total latency, upstream latency, attempts, cache hit/miss, unavailable services, selected context count, and prompt size. Log actual provider token usage when available and distinguish estimates from measured token counts.
-- Avoid logging full questions, birth details, prompts, or credentials by default. Implement graceful shutdown for the HTTP server and database connection.
-- Document setup, environment variables, seed behavior, endpoints, mock versus real generation, configuration extension, confidence meaning, and known MVP limitations.
+- Avoid logging full questions, birth details, prompts, or credentials by default.
+- Document setup, environment variables, in-code fixtures, endpoints, mock versus real generation, configuration extension, confidence meaning, and known MVP limitations.
 - Add a root agent instruction file explicitly stating: "Don't write tests."
 
 ## Testing Decisions
@@ -131,7 +133,7 @@ The MVP prioritizes clear boundaries and explainable decisions. It does not incl
 
 The evaluator values architecture, maintainability, context optimization, and explainable trade-offs more than feature count. The UI is an agreed addition for demonstration; the backend personalization engine remains the core deliverable.
 
-All-upstream concurrent gathering and selective LLM context are complementary: the former fulfills the service-fetching requirement, while the latter limits what reaches generation. SQLite persists the mock data, while in-memory caching reduces repeated upstream calls.
+All-upstream concurrent gathering and selective LLM context are complementary: the former fulfills the service-fetching requirement, while the latter limits what reaches generation. Typed constants provide deterministic mock data, while in-memory caching reduces repeated upstream calls.
 
 The final stack is Express rather than NestJS. Earlier proposals involving subscription-based length, timeframe validity, and automated tests were explicitly rejected and must not reappear during implementation.
 

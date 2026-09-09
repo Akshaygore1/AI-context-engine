@@ -11,6 +11,7 @@ export default defineConfig({
     proxy: {
       "/personalize": "http://localhost:3001",
       "/debug": "http://localhost:3001",
+      "/generation": "http://localhost:3001",
       "/health": "http://localhost:3001"
     },
   },

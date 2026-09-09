@@ -10,7 +10,7 @@ Verify implementation using TypeScript checks, production builds, and manual end
 
 ## Project direction
 
-Build the Personalized AI Context Engine in TypeScript using Express, SQLite, React, shadcn/ui, and Vercel AI SDK. Follow the published MVP spec. Keep personalization configuration-driven. No subscription tiers or timeframe matching in this MVP.
+Build the Personalized AI Context Engine in TypeScript using Express, typed in-code mock fixtures, React, shadcn/ui, and Vercel AI SDK. Follow the published MVP spec. Keep personalization configuration-driven. No subscription tiers or timeframe matching in this MVP.
 
 ## Agent skills
 

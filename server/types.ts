@@ -1,6 +1,23 @@
 export type Confidence = "HIGH" | "MEDIUM" | "LOW";
 export type Intent = "career" | "relationship" | "health" | "finance" | "general";
 export type SourceName = "profile" | "kundli" | "horoscope" | "panchang";
+export type GenerationMode = "mock" | "real";
+
+export interface GenerationSelection {
+  provider: string;
+  model: string;
+}
+
+export interface GenerationProviderOption {
+  id: string;
+  label: string;
+  models: Array<{ id: string; label: string }>;
+}
+
+export interface GenerationOptions {
+  defaultSelection: GenerationSelection;
+  providers: GenerationProviderOption[];
+}
 
 export interface UserProfile {
   id: string;
@@ -82,7 +99,7 @@ export interface PersonalizationResult {
 }
 
 export interface Generator {
-  readonly mode: "mock" | "real";
+  readonly mode: GenerationMode;
   generate(input: PersonalizationResult): Promise<GenerationResult>;
 }
 

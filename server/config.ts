@@ -1,12 +1,25 @@
+import "dotenv/config";
+
 const numberFromEnv = (name: string, fallback: number) => {
   const parsed = Number(process.env[name]);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const listFromEnv = (name: string, fallback: string[] = []) => {
+  const values = (process.env[name] ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return Array.from(new Set(values.length ? values : fallback));
+};
+
+const defaultOpenAiModels = ["gpt-5-nano", "gpt-5.6-luna", "gpt-5-mini"];
+
 export const config = {
   port: numberFromEnv("PORT", 3001),
   webOrigin: process.env.WEB_ORIGIN ?? "http://localhost:5173",
-  upstreamBaseUrl: process.env.UPSTREAM_BASE_URL ?? "http://localhost:3001/api/mock",
+  upstreamBaseUrl:
+    process.env.UPSTREAM_BASE_URL ?? "http://localhost:3001/api/mock",
   serviceUrls: {
     profile: process.env.USER_SERVICE_URL,
     kundli: process.env.KUNDLI_SERVICE_URL,
@@ -20,12 +33,19 @@ export const config = {
   upstreamRetryBackoffMs: numberFromEnv("UPSTREAM_RETRY_BACKOFF_MS", 100),
   cacheTtlMs: numberFromEnv("CACHE_TTL_MS", 30_000),
   cacheMaxEntries: numberFromEnv("CACHE_MAX_ENTRIES", 100),
-  generationMode: process.env.GENERATION_MODE === "real" ? "real" as const : "mock" as const,
+  generationMode:
+    process.env.GENERATION_MODE === "real"
+      ? ("real" as const)
+      : ("mock" as const),
   aiProvider: process.env.AI_PROVIDER ?? "openai",
   aiModel: process.env.AI_MODEL ?? "gpt-5-mini",
   openAiApiKey: process.env.OPENAI_API_KEY,
   openAiBaseUrl: process.env.OPENAI_BASE_URL,
+  openAiModels: listFromEnv("OPENAI_MODELS", defaultOpenAiModels),
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  anthropicModels: listFromEnv("ANTHROPIC_MODELS"),
+  googleApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  googleModels: listFromEnv("GOOGLE_MODELS"),
   generationTimeoutMs: numberFromEnv("GENERATION_TIMEOUT_MS", 15_000),
   generationMaxOutputTokens: numberFromEnv("GENERATION_MAX_OUTPUT_TOKENS", 500),
-  databasePath: process.env.DATABASE_PATH ?? "data/context-engine.db",
 };
